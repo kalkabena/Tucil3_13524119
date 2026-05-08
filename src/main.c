@@ -4,6 +4,7 @@
 #include "game_state.h"
 #include "game_solver.h"
 
+
 static void clearScreen() {
 #ifdef _WIN32
     system("cls");
@@ -19,13 +20,122 @@ int main() {
 	
 	if (create_board(&board, &player) != 0) {
 		tree *root = create_node(NULL, &player, NONE);
+		heuristic_functions hf = MANHATTAN;
+		int hch = -1;
+		do {
+			printf("Input heuristic function[0-2]: ");
+			scanf("%d", &hch);
+			while (getchar() != '\n');
+		} while (hch < 0 || hch > 2);
+		switch (hch) {
+			case 0:
+				hf = MANHATTAN;
+				break;
+			case 1:
+				hf = CHERBYSHEV;
+				break;
+			case 2:
+				hf = PYTHAGOREAN;
+				break;
+		}
 		clock_t start_time = clock();
-		Astar(&board, root, MANHATTAN);
+		int n_of_its = Astar(&board, root, hf);
+		if (n_of_its == -1) {
+			puts("Solution not found");
+			exit(EXIT_SUCCESS);
+		}
 		clock_t end_time = clock();
-		//print_tree(root, 0);
+		
+		tree *tnode = root;
+		
+		int tctr = 0;
+		
+		while (tnode->is_leaf == 0) {
+			char cc;
+			switch (tnode->last_dir) {
+				case LEFT:
+					cc = 'L';
+					break;
+				case RIGHT:
+					cc = 'R';
+					break;
+				case UP:
+					cc = 'U';
+					break;
+				case DOWN:
+					cc = 'D';
+					break;
+			}
+			printf( "Step %d, Input:%c\n", tctr, cc);
+			print_board(&board, &(tnode->player));
+			puts("");
+			tctr++;
+			tnode = tnode->child[tnode->solution];
+		}
+		
+		char ccc = 0;
+		switch (tnode->last_dir) {
+			case LEFT:
+				ccc = 'L';
+				break;
+			case RIGHT:
+				ccc = 'R';
+				break;
+			case UP:
+				ccc = 'U';
+				break;
+			case DOWN:
+				ccc = 'D';
+				break;
+		}
+		printf("Step %d, Input:%c\n", tctr, ccc);
+		print_board(&board, &(tnode->player));
+		puts("");
+		
+		fputs("Solution: ", stdout);
+		tnode = root;
+		while (tnode->is_leaf == 0) {
+			switch (tnode->last_dir) {
+				case LEFT:
+					fputs("L", stdout);
+					break;
+				case RIGHT:
+					fputs("R", stdout);
+					break;
+				case UP:
+					fputs("U", stdout);
+					break;
+				case DOWN:
+					fputs("D", stdout);
+					break;
+			}
+			tnode = tnode->child[tnode->solution];
+		}
+		switch (tnode->last_dir) {
+			case LEFT:
+				fputs("L", stdout);
+				break;
+			case RIGHT:
+				fputs("R", stdout);
+				break;
+			case UP:
+				fputs("U", stdout);
+				break;
+			case DOWN:
+				fputs("D", stdout);
+				break;
+		}
+		printf("\nJumlah iterasi: %d\n", n_of_its);
+		printf("Cost: %d\n", tnode->player.cost);
+		printf("Elapsed time: %.2lf ms\n\n", (double)(end_time - start_time) / CLOCKS_PER_SEC * 1000);
+		fputs("Playback? (y/n): ", stdout);
+		int yn;
+		char flag = 0;
+		yn = getchar();
+		if (yn == 'y' || yn == 'Y') flag = 1;
 		
 		tree *cur_node = root;
-		char flag = 1;
+		
 		int cur_depth = 0;
 		while (flag == 1) {
 			int in;
@@ -66,8 +176,59 @@ int main() {
 					}
 			}
 		}
-		printf("Elapsed time: %.2lf ms\n\n", (double)(end_time - start_time) / CLOCKS_PER_SEC * 1000);
 		
+		FILE *outptr;
+		
+		outptr = fopen("test/output.txt", "w");
+		fprintf(outptr, "\xEF\xBB\xBF");
+		
+		tree *tempnode = root;
+		
+		int tempctr = 0;
+		
+		while (tempnode->is_leaf == 0) {
+			char cc;
+			switch (tempnode->last_dir) {
+				case LEFT:
+					cc = 'L';
+					break;
+				case RIGHT:
+					cc = 'R';
+					break;
+				case UP:
+					cc = 'U';
+					break;
+				case DOWN:
+					cc = 'D';
+					break;
+			}
+			fprintf(outptr, "Step %d, Input:%c\n", tempctr, cc);
+			print_board_to_file(&board, &(tempnode->player), outptr);
+			fputc('\n', outptr);
+			tempctr++;
+			tempnode = tempnode->child[tempnode->solution];
+		}
+		
+		char cc = 0;
+		switch (tempnode->last_dir) {
+			case LEFT:
+				cc = 'L';
+				break;
+			case RIGHT:
+				cc = 'R';
+				break;
+			case UP:
+				cc = 'U';
+				break;
+			case DOWN:
+				cc = 'D';
+				break;
+		}
+		fprintf(outptr, "Step %d, Input:%c\n", tempctr, cc);
+		print_board_to_file(&board, &(tnode->player), outptr);
+		fputc('\n', outptr);
+		
+		fclose(outptr);
 		free_tree(root);
 	}
 	

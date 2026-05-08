@@ -1,6 +1,7 @@
 #include "game_solver.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 tree* create_node(tree *par, player_state *pl, direction dir) {
 	tree *t = (tree*)malloc(sizeof(tree));
@@ -33,11 +34,35 @@ double get_heuristic(game_board *board, player_state *pl, heuristic_functions hf
 			return mh;
 			break;
 		case PYTHAGOREAN:
+			double py = board->rows + board->cols;
+			for (int i = 0; i < board->rows; i++) {
+				for (int j = 0; j < board->cols; j++) {
+					if ((pl->next_goal < 10 && board->goals[i][j] == pl->next_goal) || (pl->next_goal == 10 && board->tiles[i][j] == GOAL)) {
+						double temp = sqrt((i - pl->row) * (i - pl->row) + (j - pl->col) * (j - pl->col));
+						if (py > temp) py = temp;
+					}
+				}
+			}
+			return py;
+			break;
+		case CHERBYSHEV:
+			double ch = board->rows + board->cols;
+			for (int i = 0; i < board->rows; i++) {
+				for (int j = 0; j < board->cols; j++) {
+					if ((pl->next_goal < 10 && board->goals[i][j] == pl->next_goal) || (pl->next_goal == 10 && board->tiles[i][j] == GOAL)) {
+						int temp = abs(i - pl->row);
+						if (abs(j - pl->col) > temp) temp = abs(j - pl->col);
+						if (ch > temp) ch = temp;
+					}
+				}
+			}
+			return ch;
 			break;
 	}
 }
 
 player_state try_sliding(game_board *board, player_state *pl, direction dir) {
+	puts("k");
 	player_state p = *pl;
 	signed char horz = 0;
 	signed char vert = 0;
@@ -50,14 +75,23 @@ player_state try_sliding(game_board *board, player_state *pl, direction dir) {
 			horz = 1;
 			vert = 0;
 			break;
-		case UP:
+		case DOWN:
 			horz = 0;
 			vert = 1;
 			break;
-		case DOWN:
+		case UP:
 			horz = 0;
 			vert = -1;
 			break;
+	}
+	
+	if (p.row + vert < 0 || p.row + vert >= board->rows ||
+		p.col + horz < 0 || p.col + horz >= board->cols ||
+		board->tiles[p.row + vert][p.col + horz] == LAVA ||
+		board->goals[p.row + vert][p.col + horz] > p.next_goal) {
+		p.row = -1;
+		p.col = -1;
+		return p;
 	}
 	
 	while (board->tiles[p.row + vert][p.col + horz] != OBSTACLE) {
@@ -74,20 +108,30 @@ player_state try_sliding(game_board *board, player_state *pl, direction dir) {
 		p.row += vert;
 		p.col += horz;
 		p.cost += board->costs[p.row][p.col];
+		if (p.row + vert < 0 || p.row + vert >= board->rows ||
+		p.col + horz < 0 || p.col + horz >= board->cols ||
+		board->tiles[p.row + vert][p.col + horz] == LAVA ||
+		board->goals[p.row + vert][p.col + horz] > p.next_goal) {
+			p.row = -1;
+			p.col = -1;
+			break;
+		}
 	}
 	if (pl->row == p.row && pl->col == p.col) {
 		p.row = -1;
 		p.col = -1;
 	}
+	puts("j");
 	return p;
 }
 
 void expand(game_board *board, tree *t, heuristic_functions hf) {
+	puts("d");
 	t->is_leaf = 0;
 	char flag = 0;
 	for (int i = 0; i < 4; i++) {
 		player_state pl = try_sliding(board, &(t->player), i);
-		if (t->parent != NULL && pl.row == t->parent->player.row && pl.col == t->parent->player.col) continue;
+		//if (t->parent != NULL && pl.row == t->parent->player.row && pl.col == t->parent->player.col) continue;
 		if (pl.row != -1 && pl.col != -1) {
 			flag = 1;
 			t->child[i] = create_node(t, &pl, i);
@@ -143,19 +187,26 @@ void set_solution_path(tree *t) {
 	}
 }
 
-void Astar(game_board *board, tree *root, heuristic_functions hf) {
+int Astar(game_board *board, tree *root, heuristic_functions hf) {
 	int i = 0;
-	while (i < 15) {
+	while (i < 9999999) {
 		tree *cur_working_node = find_lowest_cost_leaf(root);
-		//printf("%d %d %d %lf %lf %d\n===\n", cur_working_node->player.row, cur_working_node->player.col, cur_working_node->player.cost, cur_working_node->player.heuristic, cur_working_node->player.total, cur_working_node->player.next_goal);
+		if (cur_working_node == NULL) {
+			i = -1;
+			break;
+		}
+		printf("%d %d %d %lf %lf %d\n===\n", cur_working_node->player.row, cur_working_node->player.col, cur_working_node->player.cost, cur_working_node->player.heuristic, cur_working_node->player.total, cur_working_node->player.next_goal);
 		if (cur_working_node->player.heuristic <= 0.000001) {
 			set_solution_path(cur_working_node);
 			break;
 		}
 		
 		expand(board, cur_working_node, hf);
+		print_tree(root, 0);
 		i++;
 	}
+	if (i >= 9999999) i = -1;
+	return i;
 }
 
 void print_tree(tree *t, int depth) {

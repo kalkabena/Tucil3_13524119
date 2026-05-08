@@ -1,0 +1,72 @@
+﻿Step 0, Input:
+XXXXXXXX
+X******X
+X*XX*L*X
+**Z****X
+X0XXO***
+XXXXXXXX
+
+Step 1, Input:R
+XXXXXXXX
+X******X
+X*XX*L*X
+******ZX
+X0XXO***
+XXXXXXXX
+
+Step 2, Input:U
+XXXXXXXX
+X*****ZX
+X*XX*L*X
+*******X
+X0XXO***
+XXXXXXXX
+
+Step 3, Input:L
+XXXXXXXX
+XZ*****X
+X*XX*L*X
+*******X
+X0XXO***
+XXXXXXXX
+
+Step 4, Input:D
+XXXXXXXX
+X******X
+X*XX*L*X
+*******X
+XZXXO***
+XXXXXXXX
+
+Step 5, Input:U
+XXXXXXXX
+XZ*****X
+X*XX*L*X
+*******X
+X0XXO***
+XXXXXXXX
+
+Step 6, Input:R
+XXXXXXXX
+X*****ZX
+X*XX*L*X
+*******X
+X0XXO***
+XXXXXXXX
+
+Step 7, Input:D
+XXXXXXXX
+X******X
+X*XX*L*X
+*******X
+X0XXO*Z*
+XXXXXXXX
+
+Step 8, Input:L
+XXXXXXXX
+X******X
+X*XX*L*X
+*******X
+X0XXZ***
+XXXXXXXX
+

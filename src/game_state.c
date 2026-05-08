@@ -211,3 +211,33 @@ void print_board(game_board *board, player_state *player) {
 		puts("");
 	}
 }
+
+void print_board_to_file(game_board *board, player_state *player, FILE *fp) {
+    for (int i = 0; i < board->rows; i++) {
+        for (int j = 0; j < board->cols; j++) {
+            if (player->row == i && player->col == j) {
+                fputs("Z", fp);
+                continue;
+            }
+            if (board->goals[i][j] >= 0) {
+                fprintf(fp, "%d", board->goals[i][j]);
+                continue;
+            }
+            switch (board->tiles[i][j]) {
+                case PATH:
+                    fputs("*", fp);
+                    break;
+                case OBSTACLE:
+                    fputs("X", fp);
+                    break;
+                case LAVA:
+                    fputs("L", fp);
+                    break;
+                case GOAL:
+                    fputs("O", fp);
+                    break;
+            }
+        }
+        fputc('\n', fp);
+    }
+}

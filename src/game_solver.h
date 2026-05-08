@@ -13,7 +13,8 @@ typedef enum {
 
 typedef enum {
 	MANHATTAN,
-	PYTHAGOREAN
+	PYTHAGOREAN,
+	CHERBYSHEV
 } heuristic_functions;
 
 typedef struct tr* tree_address;
@@ -38,7 +39,7 @@ tree* find_lowest_cost_leaf(tree* t);
 
 void set_solution_path(tree *t);
 
-void Astar(game_board *board, tree *root, heuristic_functions hf);
+int Astar(game_board *board, tree *root, heuristic_functions hf);
 
 void print_tree(tree *t, int depth);
 

@@ -1,6 +1,8 @@
 #ifndef GAME_STATE_H
 #define GAME_STATE_H
 
+#include <stdio.h>
+
 #define MAX_ROWS 100
 #define MAX_COLS 100
 
@@ -34,5 +36,7 @@ char create_board(game_board *board, player_state *player);
 void free_board(game_board *board);
 
 void print_board(game_board *board, player_state *player);
+
+void print_board_to_file(game_board *board, player_state *player, FILE *fp);
 
 #endif
