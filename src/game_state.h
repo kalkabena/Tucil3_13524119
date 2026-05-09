@@ -37,6 +37,8 @@ void free_board(game_board *board);
 
 void print_board(game_board *board, player_state *player);
 
+char read_board_from_file(game_board *board, player_state *player, FILE *fp);
+
 void print_board_to_file(game_board *board, player_state *player, FILE *fp);
 
 #endif

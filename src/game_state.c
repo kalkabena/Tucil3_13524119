@@ -212,6 +212,191 @@ void print_board(game_board *board, player_state *player) {
 	}
 }
 
+char read_board_from_file(game_board *board, player_state *player, FILE *fp) {
+    char input[101];
+    int cur_row = 0;
+    player->row = -1;
+    player->col = -1;
+    player->next_goal = 10;
+    player->heuristic = 1;
+    player->cost = 0;
+    player->total = 0;
+    board->max_goal = -1;
+
+    if (!fgets(input, sizeof(input), fp)) {
+        fputs("Error: Could not read board dimensions.\n", stderr);
+        fclose(fp);
+        return 0;
+    }
+
+    char *end;
+    board->rows = strtoi(input, &end, 10);
+    if (end == input + strlen(input) - 1) {
+        fputs("Error: Only one number detected for dimensions.\n", stderr);
+        fclose(fp);
+        return 0;
+    }
+    board->cols = strtoi(end, &end, 10);
+    if (end == input) {
+        fputs("Error: No numbers detected for dimensions.\n", stderr);
+        fclose(fp);
+        return 0;
+    }
+    if (board->rows <= 0 || board->rows > MAX_ROWS || board->cols <= 0 || board->cols > MAX_COLS) {
+        fputs("Error: Board dimensions out of range.\n", stderr);
+        fclose(fp);
+        return 0;
+    }
+
+    board->tiles = (tile_type**)malloc(board->rows * sizeof(tile_type*));
+    if (board->tiles == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    board->costs = (int**)malloc(board->rows * sizeof(int*));
+    if (board->costs == NULL) {
+        free_board(board);
+        fclose(fp);
+        return 0;
+    }
+    board->goals = (signed char**)malloc(board->rows * sizeof(signed char*));
+    if (board->goals == NULL) {
+        free_board(board);
+        fclose(fp);
+        return 0;
+    }
+    for (int i = 0; i < board->rows; i++) {
+        board->tiles[i] = (tile_type*)malloc(board->cols * sizeof(tile_type));
+        if (board->tiles[i] == NULL) {
+            free_board(board);
+            fclose(fp);
+            return 0;
+        }
+        board->costs[i] = (int*)malloc(board->cols * sizeof(int));
+        if (board->costs[i] == NULL) {
+            free_board(board);
+            fclose(fp);
+            return 0;
+        }
+        board->goals[i] = (signed char*)malloc(board->cols * sizeof(signed char));
+        if (board->goals[i] == NULL) {
+            free_board(board);
+            fclose(fp);
+            return 0;
+        }
+    }
+
+    for (int i = 0; i < board->rows; i++) {
+        for (int j = 0; j < board->cols; j++) {
+            board->tiles[i][j] = OBSTACLE;
+            board->costs[i][j] = 999999;
+            board->goals[i][j] = -1;
+        }
+    }
+
+    while (cur_row < board->rows && fgets(input, sizeof(input), fp)) {
+        /* Strip newline */
+        size_t len = strlen(input);
+        if (len > 0 && input[len - 1] == '\n') {
+            input[--len] = '\0';
+        }
+        if (len > 0 && input[len - 1] == '\r') {
+            input[--len] = '\0';
+        }
+
+        if ((int)len != board->cols) {
+            fprintf(stderr, "Error: Row %d length (%zu) doesn't match board columns (%d).\n",
+                    cur_row, len, board->cols);
+            free_board(board);
+            fclose(fp);
+            return 0;
+        }
+
+        for (int i = 0; i < board->cols; i++) {
+            switch (input[i]) {
+                case '*':
+                    board->tiles[cur_row][i] = PATH;
+                    break;
+                case 'x':
+                case 'X':
+                    board->tiles[cur_row][i] = OBSTACLE;
+                    break;
+                case 'l':
+                case 'L':
+                    board->tiles[cur_row][i] = LAVA;
+                    break;
+                case 'z':
+                case 'Z':
+                    if (player->row == -1 && player->col == -1) {
+                        player->row = cur_row;
+                        player->col = i;
+                        board->tiles[cur_row][i] = PATH;
+                    } else {
+                        fputs("Error: Multiple player symbols detected.\n", stderr);
+                        free_board(board);
+                        fclose(fp);
+                        return 0;
+                    }
+                    break;
+                case 'o':
+                case 'O':
+                    board->tiles[cur_row][i] = GOAL;
+                    break;
+                default:
+                    if (input[i] >= '0' && input[i] <= '9') {
+                        board->goals[cur_row][i] = input[i] - '0';
+                        board->tiles[cur_row][i] = PATH;
+                        if (player->next_goal > input[i] - '0') player->next_goal = input[i] - '0';
+                        if (board->max_goal < input[i] - '0') board->max_goal = input[i] - '0';
+                    } else {
+                        fprintf(stderr, "Error: Invalid character '%c' at row %d, col %d.\n",
+                                input[i], cur_row, i);
+                        free_board(board);
+                        fclose(fp);
+                        return 0;
+                    }
+                    break;
+            }
+        }
+        cur_row++;
+    }
+
+    if (cur_row < board->rows) {
+        fputs("Error: Not enough board rows in file.\n", stderr);
+        free_board(board);
+        fclose(fp);
+        return 0;
+    }
+
+    cur_row = 0;
+
+    while (cur_row < board->rows && fgets(input, sizeof(input), fp)) {
+        char *end = input;
+        for (int i = 0; i < board->cols; i++) {
+            char *end2;
+            board->costs[cur_row][i] = strtoi(end, &end2, 10);
+            if (end == end2) {
+                fprintf(stderr, "Error: Invalid cost input at row %d, col %d.\n", cur_row, i);
+                free_board(board);
+                fclose(fp);
+                return 0;
+            }
+            end = end2;
+        }
+        cur_row++;
+    }
+
+    if (cur_row < board->rows) {
+        fputs("Error: Not enough cost rows in file.\n", stderr);
+        free_board(board);
+        fclose(fp);
+        return 0;
+    }
+
+    fclose(fp);
+    return 1;
+}
+
 void print_board_to_file(game_board *board, player_state *player, FILE *fp) {
     for (int i = 0; i < board->rows; i++) {
         for (int j = 0; j < board->cols; j++) {
